@@ -110,12 +110,7 @@ and the CSS falls back to system fonts if a face is ever unavailable.
 
 ## How the algorithm works
 
-The target is shrunk to `columns × rows` with high-quality progressive scaling, so each
-resulting pixel approximates the average colour of one cell. For every cell we pick the nearest
-tile by a **redmean-weighted** colour distance (cheap perceptual approximation), with an
-optional penalty that discourages reusing the same tile. The chosen tile — pre-scaled once to
-the cell size — is blitted in, and an optional translucent wash of the cell's true colour
-nudges the result toward the original.
+The target is shrunk to `columns × rows` with high-quality progressive scaling, so eachcresulting pixel approximates the average colour of one cell. For every cell we pick the nearest tile by a **redmean-weighted** colour distance (cheap perceptual approximation), with an optional penalty that discourages reusing the same tile. The chosen tile — pre-scaled once to the cell size — is blitted in, and an optional translucent wash of the cell's true colour nudges the result toward the original.
 
 ### Ideas for later
 - **Lab / CIEDE2000** matching for more faithful colour.
