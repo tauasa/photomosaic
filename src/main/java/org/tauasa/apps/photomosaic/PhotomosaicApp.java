@@ -298,6 +298,17 @@ public class PhotomosaicApp extends Application {
                 (float) blendSlider.getValue(),
                 repeatSlider.getValue());
 
+        // The output canvas itself can blow the heap if the grid is cranked up
+        // (e.g. 400×400 cells at 128 px ≈ a 50k-px image). Catch it before allocating.
+        long outBytes = (long) cfg.outputWidth() * cfg.outputHeight() * 4L;
+        if (outBytes > 1_200_000_000L) {
+            warn("That mosaic would be too large",
+                    "The current grid would render a " + cfg.outputWidth() + "\u00d7" + cfg.outputHeight()
+                            + " px image (~" + (outBytes / 1_048_576L) + " MB in memory).\n\n"
+                            + "Lower the columns, rows, or cell size and try again.");
+            return;
+        }
+
         Task<BufferedImage> task = new Task<>() {
             @Override
             protected BufferedImage call() {
@@ -431,6 +442,15 @@ public class PhotomosaicApp extends Application {
         a.setTitle("Photomosaic");
         a.setHeaderText(header);
         a.setContentText(ex == null ? "Unknown error" : String.valueOf(ex.getMessage()));
+        Theme.apply(a.getDialogPane());
+        a.showAndWait();
+    }
+
+    private void warn(String header, String body) {
+        Alert a = new Alert(Alert.AlertType.WARNING);
+        a.setTitle("Photomosaic");
+        a.setHeaderText(header);
+        a.setContentText(body);
         Theme.apply(a.getDialogPane());
         a.showAndWait();
     }

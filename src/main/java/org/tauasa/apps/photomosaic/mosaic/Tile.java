@@ -3,17 +3,25 @@ package org.tauasa.apps.photomosaic.mosaic;
 import java.awt.image.BufferedImage;
 
 /**
- * A single source image used as a mosaic tile. Holds the original, its average RGB
- * (the signature used for matching) and a lazily-built copy scaled to the current
- * cell size.
+ * A single source image used as a mosaic tile.
+ *
+ * <p>The full-resolution import is <em>not</em> retained. A tile is only ever drawn at cell
+ * size, so at construction we downscale once to a small "master" (capped at {@link #MASTER}
+ * px, the maximum cell size the UI allows) and keep only that. The original BufferedImage
+ * becomes eligible for garbage collection immediately, which is what keeps memory flat as
+ * hundreds or thousands of photos are imported. Holding the originals was costing tens of
+ * megabytes per photo.
  */
 public final class Tile {
 
+    /** Master cap in px. Must be >= the largest cell size the UI can request. */
+    private static final int MASTER = 128;
+
     private final String id;
-    private final BufferedImage source;
+    private final BufferedImage master;   // small, capped render — all we ever need
     private final float[] avgRgb;
 
-    private BufferedImage scaled;
+    private BufferedImage scaled;         // cache for the current cell size
     private int scaledW = -1;
     private int scaledH = -1;
 
@@ -22,8 +30,10 @@ public final class Tile {
 
     public Tile(String id, BufferedImage source) {
         this.id = id;
-        this.source = ColorAnalysis.toRgb(source);
-        this.avgRgb = ColorAnalysis.averageRgb(this.source);
+        // Scale straight from the source (any image type) to the small master, then drop
+        // the source. avgRgb is taken from the master — the colour the tile actually shows.
+        this.master = ColorAnalysis.scale(source, MASTER, MASTER);
+        this.avgRgb = ColorAnalysis.averageRgb(this.master);
     }
 
     public String id() {
@@ -36,8 +46,12 @@ public final class Tile {
 
     /** Return this tile rendered at the requested cell size, caching the result. */
     public BufferedImage scaled(int w, int h) {
+        // The master already is the max cell size; never upscale past it.
+        if (w >= MASTER && h >= MASTER) {
+            return master;
+        }
         if (scaled == null || scaledW != w || scaledH != h) {
-            scaled = ColorAnalysis.scale(source, w, h);
+            scaled = ColorAnalysis.scale(master, w, h);
             scaledW = w;
             scaledH = h;
         }
