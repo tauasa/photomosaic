@@ -19,6 +19,10 @@
 
         <thumbnailator.version>0.4.21</thumbnailator.version>
         <twelvemonkeys.version>3.13.1</twelvemonkeys.version>
+        <postgresql.version>42.7.4</postgresql.version>
+        <google.apiclient.version>2.7.0</google.apiclient.version>
+        <google.oauth.version>1.36.0</google.oauth.version>
+        <gson.version>2.11.0</gson.version>
     </properties>
 
     <dependencies>
@@ -55,6 +59,36 @@
             <groupId>com.twelvemonkeys.imageio</groupId>
             <artifactId>imageio-tiff</artifactId>
             <version>${twelvemonkeys.version}</version>
+        </dependency>
+
+        <!-- Postgres persistence: saved Google Photos picks are reusable across runs. -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${postgresql.version}</version>
+        </dependency>
+
+        <!-- Google sign-in (OAuth 2.0 installed-app loopback) for the Photos Picker API.
+             google-api-client provides the com.google.api.client.googleapis.auth.oauth2
+             classes (GoogleAuthorizationCodeFlow, GoogleClientSecrets) and pulls in
+             google-http-client-gson (GsonFactory); the -jetty extension adds the local
+             loopback receiver used by the installed-app flow. -->
+        <dependency>
+            <groupId>com.google.api-client</groupId>
+            <artifactId>google-api-client</artifactId>
+            <version>${google.apiclient.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.oauth-client</groupId>
+            <artifactId>google-oauth-client-jetty</artifactId>
+            <version>${google.oauth.version}</version>
+        </dependency>
+
+        <!-- JSON for the Picker REST calls. -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
         </dependency>
     </dependencies>
 
