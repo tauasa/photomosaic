@@ -26,6 +26,10 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCharacterCombination;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCombination;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -73,6 +77,9 @@ public class PhotomosaicApp extends Application {
     // views
     private final ImageView targetView = new ImageView();
     private final ImageView mosaicView = new ImageView();
+    private TabPane tabPane;
+    private ScrollPane targetScroll;
+    private ScrollPane mosaicScroll;
     private final Label status = new Label("Choose a target image to begin.");
     private final ProgressBar progress = new ProgressBar(0);
 
@@ -109,6 +116,9 @@ public class PhotomosaicApp extends Application {
 
         Scene scene = new Scene(root, 1060, 760);
         Theme.apply(scene);
+        // Reliable zoom shortcuts: menu accelerators for '=' / '-' don't always fire
+        // (notably on macOS), so handle the key events directly as well.
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleZoomKeys);
         stage.setScene(scene);
         stage.setTitle("Photomosaic \u2014 org.tauasa.apps.photomosaic");
         stage.show();
@@ -129,12 +139,24 @@ public class PhotomosaicApp extends Application {
         Menu editMenu = new Menu("Edit");
         editMenu.getItems().add(clearItem);
 
+        MenuItem zoomIn = new MenuItem("Zoom In");
+        zoomIn.setOnAction(e -> zoomBy(1.25));
+        zoomIn.setAccelerator(new KeyCharacterCombination("=", KeyCombination.SHORTCUT_DOWN));
+        MenuItem zoomOut = new MenuItem("Zoom Out");
+        zoomOut.setOnAction(e -> zoomBy(0.8));
+        zoomOut.setAccelerator(new KeyCharacterCombination("-", KeyCombination.SHORTCUT_DOWN));
+        MenuItem zoomFit = new MenuItem("Zoom to Fit");
+        zoomFit.setOnAction(e -> zoomToFit());
+        zoomFit.setAccelerator(new KeyCharacterCombination("0", KeyCombination.SHORTCUT_DOWN));
+        Menu viewMenu = new Menu("View");
+        viewMenu.getItems().addAll(zoomIn, zoomOut, zoomFit);
+
         MenuItem aboutItem = new MenuItem("About");
         aboutItem.setOnAction(e -> showAbout());
         Menu helpMenu = new Menu("Help");
         helpMenu.getItems().add(aboutItem);
 
-        MenuBar menuBar = new MenuBar(fileMenu, editMenu, helpMenu);
+        MenuBar menuBar = new MenuBar(fileMenu, editMenu, viewMenu, helpMenu);
         // On macOS this hands the menu to the system bar; harmless elsewhere.
         menuBar.setUseSystemMenuBar(true);
         return menuBar;
@@ -256,11 +278,13 @@ public class PhotomosaicApp extends Application {
     }
 
     private TabPane buildPreview() {
-        Tab t1 = new Tab("Target", wrapScroll(targetView));
-        Tab t2 = new Tab("Mosaic", wrapScroll(mosaicView));
-        TabPane tabs = new TabPane(t1, t2);
-        tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-        return tabs;
+        targetScroll = wrapScroll(targetView);
+        mosaicScroll = wrapScroll(mosaicView);
+        Tab t1 = new Tab("Target", targetScroll);
+        Tab t2 = new Tab("Mosaic", mosaicScroll);
+        tabPane = new TabPane(t1, t2);
+        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        return tabPane;
     }
 
     private HBox buildStatusBar() {
@@ -282,12 +306,14 @@ public class PhotomosaicApp extends Application {
     // ---- actions -----------------------------------------------------------
 
     private void chooseTarget(Stage stage) {
+        tabPane.getSelectionModel().select(0); // focus the Target tab
         File f = imageChooser("Choose target image").showOpenDialog(stage);
         if (f == null) return;
         try {
             targetImage = ImageIO.read(f);
             if (targetImage == null) throw new Exception("Unsupported image format.");
             targetView.setImage(toFx(targetImage));
+            Platform.runLater(() -> fitToView(targetView, targetScroll));
             applyAspectToGrid(targetImage.getWidth(), targetImage.getHeight());
             refreshGenerateEnabled();
             status.setText("Target loaded: " + f.getName() + "  (" + targetImage.getWidth()
@@ -404,6 +430,8 @@ public class PhotomosaicApp extends Application {
         runTask(task, () -> {
             mosaicImage = task.getValue();
             mosaicView.setImage(toFx(mosaicImage));
+            tabPane.getSelectionModel().select(1); // show the Mosaic tab
+            Platform.runLater(() -> fitToView(mosaicView, mosaicScroll));
             saveBtn.setDisable(false);
             status.setText("Mosaic ready: " + cfg.outputWidth() + "\u00d7" + cfg.outputHeight()
                     + " px from " + library.size() + " tiles.");
@@ -482,6 +510,81 @@ public class PhotomosaicApp extends Application {
         generateBtn.setDisable(targetImage == null || library.size() == 0);
     }
 
+    // ---- zoom --------------------------------------------------------------
+
+    private static final double MIN_ZOOM = 0.05;
+    private static final double MAX_ZOOM = 8.0;
+
+    private boolean mosaicActive() {
+        return tabPane.getSelectionModel().getSelectedIndex() == 1;
+    }
+
+    private ImageView activeView() {
+        return mosaicActive() ? mosaicView : targetView;
+    }
+
+    private ScrollPane activeScroll() {
+        return mosaicActive() ? mosaicScroll : targetScroll;
+    }
+
+    private void zoomBy(double factor) {
+        ImageView v = activeView();
+        Image img = v.getImage();
+        if (img == null) return;
+        double current = v.getFitWidth() > 0 ? v.getFitWidth() : img.getWidth();
+        double natural = img.getWidth();
+        double next = Math.max(natural * MIN_ZOOM, Math.min(natural * MAX_ZOOM, current * factor));
+        v.setFitHeight(0);
+        v.setFitWidth(next);
+    }
+
+    private void zoomToFit() {
+        fitToView(activeView(), activeScroll());
+    }
+
+    /**
+     * Handle Ctrl/Cmd + ( =, +, -, 0 ) directly. Matching on both the typed character and
+     * the key code covers keyboard layouts and platforms where the menu accelerator for
+     * '=' / '-' fails to fire.
+     */
+    private void handleZoomKeys(KeyEvent e) {
+        if (!e.isShortcutDown()) {
+            return;
+        }
+        String text = e.getText();
+        KeyCode code = e.getCode();
+        if ("=".equals(text) || "+".equals(text)
+                || code == KeyCode.EQUALS || code == KeyCode.PLUS || code == KeyCode.ADD) {
+            zoomBy(1.25);
+            e.consume();
+        } else if ("-".equals(text)
+                || code == KeyCode.MINUS || code == KeyCode.SUBTRACT) {
+            zoomBy(0.8);
+            e.consume();
+        } else if ("0".equals(text)
+                || code == KeyCode.DIGIT0 || code == KeyCode.NUMPAD0) {
+            zoomToFit();
+            e.consume();
+        }
+    }
+
+    /** Size the view so the whole image fits the viewport (without upscaling past 100%). */
+    private void fitToView(ImageView view, ScrollPane scroll) {
+        Image img = view.getImage();
+        if (img == null) return;
+        view.setFitHeight(0);
+        var vb = scroll.getViewportBounds();
+        double vw = vb.getWidth();
+        double vh = vb.getHeight();
+        if (vw <= 1 || vh <= 1) {
+            view.setFitWidth(img.getWidth());
+            return;
+        }
+        double fit = Math.min(vw / img.getWidth(), vh / img.getHeight());
+        fit = Math.min(fit, 1.0); // don't enlarge small images
+        view.setFitWidth(Math.max(1, img.getWidth() * fit));
+    }
+
     private FileChooser imageChooser(String title) {
         FileChooser fc = new FileChooser();
         fc.setTitle(title);
@@ -527,8 +630,9 @@ public class PhotomosaicApp extends Application {
         ScrollPane sp = new ScrollPane(view);
         sp.getStyleClass().add("canvas-wrap");
         sp.setPannable(true);
-        sp.setFitToWidth(true);
-        sp.setFitToHeight(true);
+        // Auto-fit is off so the image can be zoomed; the view's fitWidth drives the size.
+        sp.setFitToWidth(false);
+        sp.setFitToHeight(false);
         return sp;
     }
 
