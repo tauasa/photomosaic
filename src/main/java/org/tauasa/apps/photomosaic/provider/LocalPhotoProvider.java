@@ -41,13 +41,16 @@ public final class LocalPhotoProvider implements PhotoProvider {
     }
 
     @Override
-    public List<PhotoRef> select(Window owner) {
-        DirectoryChooser chooser = new DirectoryChooser();
-        chooser.setTitle("Folder of tile images");
-        File dir = chooser.showDialog(owner);
+    public List<PhotoRef> select(Window owner, ProgressSink progress) throws Exception {
+        File dir = Fx.call(() -> {
+            DirectoryChooser chooser = new DirectoryChooser();
+            chooser.setTitle("Folder of tile images");
+            return chooser.showDialog(owner);
+        });
         if (dir == null) {
             return List.of();
         }
+        progress.status("Scanning " + dir.getName() + "\u2026");
         List<PhotoRef> refs = new ArrayList<>();
         collect(dir, refs);
         return refs;

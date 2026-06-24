@@ -7,16 +7,13 @@ import java.util.List;
 /**
  * A pluggable source of tile photos for the mosaic.
  *
- * <p>The contract deliberately splits selection from loading so the UI stays responsive:
- * <ul>
- *   <li>{@link #select(Window)} runs the (usually interactive) choosing step on the JavaFX
- *       application thread and returns cheap {@link PhotoRef} handles.</li>
- *   <li>The caller then invokes {@link PhotoRef#load()} on each handle from a background
- *       thread to decode the actual images.</li>
- * </ul>
+ * <p>{@link #select(Window, ProgressSink)} is invoked on a <em>background</em> thread so that
+ * slow work (network, database) doesn't freeze the UI. Implementations that need to show a
+ * chooser or dialog marshal it to the JavaFX thread with {@link Fx}, and report progress
+ * through the supplied {@link ProgressSink}. Selection returns cheap {@link PhotoRef} handles;
+ * the caller then calls {@link PhotoRef#load()} on each, also off-thread.
  *
- * <p>Adding a new source (a cloud service, a URL list, a stock-photo API, ...) is just a new
- * implementation of this interface; nothing else in the app needs to change.
+ * <p>Adding a new source is just a new implementation; nothing else in the app changes.
  */
 public interface PhotoProvider {
 
@@ -24,12 +21,12 @@ public interface PhotoProvider {
     String displayName();
 
     /**
-     * Interactively choose photos. Call on the JavaFX application thread, as implementations
-     * may show a chooser dialog.
+     * Choose photos. Runs off the JavaFX application thread.
      *
-     * @param owner the window to parent any dialogs to (may be {@code null})
-     * @return references to the chosen photos, or an empty list if the user cancelled
-     * @throws Exception if selection fails (e.g. a remote provider can't connect)
+     * @param owner    window to parent any dialogs to (may be {@code null})
+     * @param progress channel for status/progress updates
+     * @return references to the chosen photos, or an empty list if cancelled / unavailable
+     * @throws Exception if selection fails
      */
-    List<PhotoRef> select(Window owner) throws Exception;
+    List<PhotoRef> select(Window owner, ProgressSink progress) throws Exception;
 }

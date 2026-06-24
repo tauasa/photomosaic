@@ -40,6 +40,11 @@ import org.tauasa.apps.photomosaic.mosaic.TileLibrary;
 import org.tauasa.apps.photomosaic.provider.LocalPhotoProvider;
 import org.tauasa.apps.photomosaic.provider.PhotoProvider;
 import org.tauasa.apps.photomosaic.provider.PhotoRef;
+import org.tauasa.apps.photomosaic.provider.ProgressSink;
+import org.tauasa.apps.photomosaic.provider.db.DbConfig;
+import org.tauasa.apps.photomosaic.provider.db.PhotoStore;
+import org.tauasa.apps.photomosaic.provider.db.PostgresPhotoProvider;
+import org.tauasa.apps.photomosaic.provider.google.GooglePhotoProvider;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -55,8 +60,9 @@ public class PhotomosaicApp extends Application {
 
     private final MosaicEngine engine = new MosaicEngine();
 
-    /** Tile sources. Add more PhotoProvider implementations here to expose them in the UI. */
-    private final List<PhotoProvider> providers = List.of(new LocalPhotoProvider());
+    /** Tile sources, populated in {@link #start} (Google needs the host services). */
+    private List<PhotoProvider> providers;
+    private PhotoStore photoStore;
 
     // state
     private BufferedImage targetImage;
@@ -82,6 +88,12 @@ public class PhotomosaicApp extends Application {
 
     @Override
     public void start(Stage stage) {
+        photoStore = new PhotoStore(DbConfig.load());
+        providers = List.of(
+                new LocalPhotoProvider(),
+                new GooglePhotoProvider(photoStore, getHostServices()::showDocument),
+                new PostgresPhotoProvider(photoStore));
+
         targetView.setPreserveRatio(true);
         targetView.setFitWidth(640);
         mosaicView.setPreserveRatio(true);
@@ -251,18 +263,27 @@ public class PhotomosaicApp extends Application {
     }
 
     private void addTilesFrom(PhotoProvider provider, Stage stage) {
-        final List<PhotoRef> refs;
-        try {
-            refs = provider.select(stage);
-        } catch (Exception ex) {
-            error("Could not load from " + provider.displayName(), ex);
-            return;
-        }
-        if (refs.isEmpty()) return;
-
         Task<Integer> task = new Task<>() {
             @Override
-            protected Integer call() {
+            protected Integer call() throws Exception {
+                ProgressSink sink = new ProgressSink() {
+                    @Override
+                    public void status(String message) {
+                        updateMessage(message);
+                    }
+
+                    @Override
+                    public void progress(double fraction) {
+                        updateProgress(Math.max(0, Math.min(1, fraction)), 1);
+                    }
+                };
+
+                updateMessage("Selecting\u2026");
+                List<PhotoRef> refs = provider.select(stage, sink);
+                if (refs.isEmpty()) {
+                    return 0;
+                }
+
                 int added = 0;
                 for (int i = 0; i < refs.size(); i++) {
                     PhotoRef ref = refs.get(i);
