@@ -33,6 +33,11 @@ public final class TileLibrary {
         }
     }
 
+    /** Remove every tile from the library. */
+    public void clear() {
+        tiles.clear();
+    }
+
     /**
      * Find the closest tile to the target colour.
      *

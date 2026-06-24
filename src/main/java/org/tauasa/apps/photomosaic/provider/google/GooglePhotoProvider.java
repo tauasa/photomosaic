@@ -106,12 +106,18 @@ public final class GooglePhotoProvider implements PhotoProvider {
             List<PhotoRef> refs = new ArrayList<>();
             int n = photos.size();
             for (int i = 0; i < n; i++) {
+                if (Thread.currentThread().isInterrupted()) {
+                    break; // cancelled
+                }
                 PickedPhoto photo = photos.get(i);
                 if (photo.isImage()) {
                     try {
                         byte[] bytes = picker.downloadBytes(photo, DOWNLOAD_PX, DOWNLOAD_PX);
                         String id = store.save(collection, photo.filename(), photo.mimeType(), bytes);
                         refs.add(store.ref(id, photo.filename()));
+                    } catch (InterruptedException cancelled) {
+                        Thread.currentThread().interrupt();
+                        break;
                     } catch (Exception perPhoto) {
                         // skip a photo that fails to download/save
                     }

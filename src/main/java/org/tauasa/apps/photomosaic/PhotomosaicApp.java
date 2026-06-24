@@ -10,6 +10,7 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Control;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
@@ -84,6 +85,7 @@ public class PhotomosaicApp extends Application {
 
     private Button generateBtn;
     private Button saveBtn;
+    private Button cancelBtn;
     private final Label tileCount = new Label("Tiles: 0");
 
     @Override
@@ -122,15 +124,43 @@ public class PhotomosaicApp extends Application {
         Menu fileMenu = new Menu("File");
         fileMenu.getItems().add(exitItem);
 
+        MenuItem clearItem = new MenuItem("Clear Tiles");
+        clearItem.setOnAction(e -> clearTiles());
+        Menu editMenu = new Menu("Edit");
+        editMenu.getItems().add(clearItem);
+
         MenuItem aboutItem = new MenuItem("About");
         aboutItem.setOnAction(e -> showAbout());
         Menu helpMenu = new Menu("Help");
         helpMenu.getItems().add(aboutItem);
 
-        MenuBar menuBar = new MenuBar(fileMenu, helpMenu);
+        MenuBar menuBar = new MenuBar(fileMenu, editMenu, helpMenu);
         // On macOS this hands the menu to the system bar; harmless elsewhere.
         menuBar.setUseSystemMenuBar(true);
         return menuBar;
+    }
+
+    private void clearTiles() {
+        if (library.size() == 0) {
+            status.setText("No tiles to clear.");
+            return;
+        }
+        int n = library.size();
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Photomosaic");
+        confirm.setHeaderText("Clear all tiles?");
+        confirm.setContentText("This removes the " + n + " loaded tile" + (n == 1 ? "" : "s")
+                + " from the current session. Photos saved in Postgres are not affected.");
+        confirm.getButtonTypes().setAll(ButtonType.CANCEL, ButtonType.OK);
+        Theme.apply(confirm.getDialogPane());
+        confirm.showAndWait().ifPresent(button -> {
+            if (button == ButtonType.OK) {
+                library.clear();
+                tileCount.setText("Tiles: 0");
+                refreshGenerateEnabled();
+                status.setText("Cleared " + n + " tile" + (n == 1 ? "" : "s") + ".");
+            }
+        });
     }
 
     private void showAbout() {
@@ -236,7 +266,11 @@ public class PhotomosaicApp extends Application {
     private HBox buildStatusBar() {
         progress.setPrefWidth(220);
         status.getStyleClass().add("status-text");
-        HBox bar = new HBox(12, status, progress);
+        cancelBtn = new Button("Cancel");
+        cancelBtn.getStyleClass().add("ghost");
+        cancelBtn.setVisible(false);
+        cancelBtn.setManaged(false);
+        HBox bar = new HBox(12, status, progress, cancelBtn);
         bar.getStyleClass().add("statusbar");
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(8, 12, 8, 12));
@@ -254,12 +288,38 @@ public class PhotomosaicApp extends Application {
             targetImage = ImageIO.read(f);
             if (targetImage == null) throw new Exception("Unsupported image format.");
             targetView.setImage(toFx(targetImage));
+            applyAspectToGrid(targetImage.getWidth(), targetImage.getHeight());
             refreshGenerateEnabled();
             status.setText("Target loaded: " + f.getName() + "  (" + targetImage.getWidth()
-                    + "\u00d7" + targetImage.getHeight() + ")");
+                    + "\u00d7" + targetImage.getHeight() + ")  \u2192 grid "
+                    + colsSpinner.getValue() + "\u00d7" + rowsSpinner.getValue());
         } catch (Exception ex) {
             error("Could not load target image", ex);
         }
+    }
+
+    /**
+     * Match the column:row grid to the target's width:height so the mosaic isn't stretched.
+     * The longer side keeps the current density; the shorter side is scaled to suit.
+     */
+    private void applyAspectToGrid(int imgW, int imgH) {
+        if (imgW <= 0 || imgH <= 0) return;
+        int max = 400;
+        int base = clamp(Math.max(colsSpinner.getValue(), rowsSpinner.getValue()), 8, max);
+        int cols, rows;
+        if (imgW >= imgH) {
+            cols = base;
+            rows = clamp((int) Math.round(base * (imgH / (double) imgW)), 8, max);
+        } else {
+            rows = base;
+            cols = clamp((int) Math.round(base * (imgW / (double) imgH)), 8, max);
+        }
+        colsSpinner.getValueFactory().setValue(cols);
+        rowsSpinner.getValueFactory().setValue(rows);
+    }
+
+    private static int clamp(int v, int lo, int hi) {
+        return Math.max(lo, Math.min(hi, v));
     }
 
     private void addTilesFrom(PhotoProvider provider, Stage stage) {
@@ -286,6 +346,9 @@ public class PhotomosaicApp extends Application {
 
                 int added = 0;
                 for (int i = 0; i < refs.size(); i++) {
+                    if (isCancelled()) {
+                        break;
+                    }
                     PhotoRef ref = refs.get(i);
                     try {
                         BufferedImage img = ref.load();
@@ -306,7 +369,7 @@ public class PhotomosaicApp extends Application {
             tileCount.setText("Tiles: " + library.size());
             refreshGenerateEnabled();
             status.setText("Added " + task.getValue() + " tiles from " + provider.displayName() + ".");
-        });
+        }, true);
     }
 
     private void generate() {
@@ -344,7 +407,7 @@ public class PhotomosaicApp extends Application {
             saveBtn.setDisable(false);
             status.setText("Mosaic ready: " + cfg.outputWidth() + "\u00d7" + cfg.outputHeight()
                     + " px from " + library.size() + " tiles.");
-        });
+        }, false);
     }
 
     private void save(Stage stage) {
@@ -368,10 +431,14 @@ public class PhotomosaicApp extends Application {
 
     // ---- helpers -----------------------------------------------------------
 
-    private void runTask(Task<?> task, Runnable onDone) {
+    private void runTask(Task<?> task, Runnable onDone, boolean cancellable) {
         progress.progressProperty().bind(task.progressProperty());
         status.textProperty().bind(task.messageProperty());
         setControlsDisabled(true);
+        if (cancellable) {
+            cancelBtn.setOnAction(e -> task.cancel(true));
+            showCancel(true);
+        }
 
         task.setOnSucceeded(e -> {
             unbind();
@@ -381,17 +448,28 @@ public class PhotomosaicApp extends Application {
             unbind();
             error("Something went wrong", task.getException());
         });
+        task.setOnCancelled(e -> {
+            unbind();
+            status.setText("Cancelled.");
+        });
 
         Thread th = new Thread(task, "photomosaic-worker");
         th.setDaemon(true);
         th.start();
     }
 
+    private void showCancel(boolean on) {
+        cancelBtn.setVisible(on);
+        cancelBtn.setManaged(on);
+    }
+
     private void unbind() {
         progress.progressProperty().unbind();
         status.textProperty().unbind();
         progress.setProgress(0);
+        showCancel(false);
         setControlsDisabled(false);
+        tileCount.setText("Tiles: " + library.size());
         refreshGenerateEnabled();
     }
 
