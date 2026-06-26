@@ -1,10 +1,6 @@
 # Photomosaic Generator
 
-A JavaFX desktop app that builds **photomosaics** — recreating a target image out of a grid
-of smaller photos. Tile images are supplied through a pluggable **`PhotoProvider`**; the
-default implementation picks them from your **local filesystem**. Tiles are scaled with
-**Thumbnailator**; **TwelveMonkeys ImageIO** widens the range of source formats the app can
-decode.
+A JavaFX desktop app that builds **photomosaics** — recreating a target image out of a grid of smaller photos. Tile images are supplied through a pluggable **`PhotoProvider`**; the default implementation picks them from your **local filesystem**. Tiles are scaled with **Thumbnailator**; **TwelveMonkeys ImageIO** widens the range of source formats the app can decode.
 
 ![Target image](target.png)
 ![Mosaic image](mosaic.png)
@@ -14,8 +10,7 @@ decode.
 ## What it does
 
 1. Pick a **target image** (the picture you want to recreate).
-2. Gather **tile images** from a `PhotoProvider` — a **local folder**, your **Google Photos**,
-   or photos you **previously saved to Postgres**.
+2. Gather **tile images** from a `PhotoProvider` — a **local folder**, your **Google Photos**, or photos you **previously saved to Postgres**.
 3. Tune the grid (columns × rows, cell size, colour blend, anti-repeat).
 4. **Generate** and **save** the mosaic as PNG/JPEG.
 
@@ -23,16 +18,14 @@ decode.
 
 ## Quick start
 
-The simplest way to launch — these build the fat jar on first run, then start it (and skip the
-build next time):
+The simplest way to launch — these build the fat jar on first run, then start it (and skip the build next time):
 
 ```bash
 ./run.sh              # macOS / Linux
 run.bat               # Windows
 ```
 
-Add `--rebuild` to force a clean rebuild, and set `PHOTOMOSAIC_JAVA_OPTS` (e.g. `-Xmx4g`) for
-more heap with very large tile libraries.
+Add `--rebuild` to force a clean rebuild, and set `PHOTOMOSAIC_JAVA_OPTS` (e.g. `-Xmx4g`) for more heap with very large tile libraries.
 
 Or drive Maven directly:
 
@@ -43,17 +36,13 @@ mvn clean package           # build a fat jar
 java -jar target/photomosaic.jar
 ```
 
-Requires JDK 17+. JavaFX is pulled in by Maven, so no separate SDK install is needed. The
-**Local files** source needs no setup at all — click *“Add tiles from Local files”*, point it
-at a folder, and go. The Google Photos and Postgres sources need the one-time setup below.
+Requires JDK 17+. JavaFX is pulled in by Maven, so no separate SDK install is needed. The **Local files** source needs no setup at all — click *“Add tiles from Local files”*, point it at a folder, and go. The Google Photos and Postgres sources need the one-time setup below.
 
 ---
 
 ## Tile sources (`PhotoProvider`)
 
-Tile sources are pluggable. The contract splits choosing from loading so the UI stays
-responsive — `select(...)` runs on a background thread (marshalling any dialog to the FX thread
-and reporting progress), and `load()` does the per-image I/O:
+Tile sources are pluggable. The contract splits choosing from loading so the UI stays responsive — `select(...)` runs on a background thread (marshalling any dialog to the FX thread and reporting progress), and `load()` does the per-image I/O:
 
 ```java
 public interface PhotoProvider {
@@ -69,20 +58,13 @@ public interface PhotoRef {
 
 Three providers ship today:
 
-- **Local files** (`LocalPhotoProvider`) — folder chooser; every image becomes a tile. Use
-  `new LocalPhotoProvider(true)` to recurse into sub-folders.
-- **Google Photos** (`GooglePhotoProvider`) — opens Google's photo picker; each pick is
-  downloaded at tile size and **saved to Postgres**, then used as a tile.
-- **Saved (Postgres)** (`PostgresPhotoProvider`) — reloads a previously saved collection (or
-  all of them) straight from the database, no network needed.
+- **Local files** (`LocalPhotoProvider`) — folder chooser; every image becomes a tile. Use `new LocalPhotoProvider(true)` to recurse into sub-folders.
+- **Google Photos** (`GooglePhotoProvider`) — opens Google's photo picker; each pick is downloaded at tile size and **saved to Postgres**, then used as a tile.
+- **Saved (Postgres)** (`PostgresPhotoProvider`) — reloads a previously saved collection (or all of them) straight from the database, no network needed.
 
 ### Why Google picks are stored as image bytes
 
-Google removed library listing/search in April 2025; apps must use the **Picker API**, which
-hands back only **temporary** URLs tied to the picking session. A saved URL would be dead
-later — so to make "use again later" actually work, `GooglePhotoProvider` downloads a small
-(256 px) copy of each pick and stores the bytes in Postgres under a named *collection*.
-`PostgresPhotoProvider` reads them back. (Tiles are capped at 128 px anyway, so the stored
+Google removed library listing/search in April 2025; apps must use the **Picker API**, which hands back only **temporary** URLs tied to the picking session. A saved URL would be dead later — so to make "use again later" actually work, `GooglePhotoProvider` downloads a small (256 px) copy of each pick and stores the bytes in Postgres under a named *collection*. `PostgresPhotoProvider` reads them back. (Tiles are capped at 128 px anyway, so the stored
 copies are tiny.)
 
 ### Google Photos setup (one-time)
