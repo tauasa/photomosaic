@@ -75,8 +75,7 @@ copies are tiny.)
 4. Create an **OAuth client ID** of type **Desktop app** and download the JSON.
 5. Save it as `~/.photomosaic/client_secret.json`.
 
-The requested scope is read-only (`photospicker.mediaitems.readonly`); the refresh token is
-cached under `~/.photomosaic/tokens` so you consent only once. Google handles sign-in in your
+The requested scope is read-only (`photospicker.mediaitems readonly`); the refresh token is cached under `~/.photomosaic/tokens` so you consent only once. Google handles sign-in in your
 browser — no password is entered into the app.
 
 ### Postgres setup (one-time)
@@ -89,14 +88,11 @@ export PHOTOMOSAIC_DB_USER="postgres"
 export PHOTOMOSAIC_DB_PASSWORD="..."
 ```
 
-…or a `~/.photomosaic/db.properties` file with `url` / `user` / `password` keys. The app
-creates its `tile_photo` table automatically on first use. Credentials are never hardcoded —
-you supply your own database.
+…or a `~/.photomosaic/db.properties` file with `url` / `user` / `password` keys. The app creates its `tile_photo` table automatically on first use. Credentials are never hardcoded — you supply your own database.
 
 ### Adding another source
 
-Implement `PhotoProvider`, then register it in `PhotomosaicApp`'s `providers` list. The UI
-builds one *“Add tiles from …”* button per provider automatically — nothing else changes.
+Implement `PhotoProvider`, then register it in `PhotomosaicApp`'s `providers` list. The UI builds one *“Add tiles from …”* button per provider automatically — nothing else changes.
 
 ---
 

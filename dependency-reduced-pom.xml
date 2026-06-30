@@ -4,7 +4,7 @@
   <groupId>org.tauasa.apps</groupId>
   <artifactId>photomosaic</artifactId>
   <name>photomosaic</name>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <description>JavaFX photomosaic generator with a pluggable PhotoProvider tile source.</description>
   <build>
     <finalName>photomosaic</finalName>
