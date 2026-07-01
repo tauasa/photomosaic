@@ -75,8 +75,7 @@ copies are tiny.)
 4. Create an **OAuth client ID** of type **Desktop app** and download the JSON.
 5. Save it as `~/.photomosaic/client_secret.json`.
 
-The requested scope is read-only (`photospicker.mediaitems readonly`); the refresh token is cached under `~/.photomosaic/tokens` so you consent only once. Google handles sign-in in your
-browser — no password is entered into the app.
+The requested scope is read-only (`photospicker.mediaitems readonly`); the refresh token is cached under `~/.photomosaic/tokens` so you consent only once. Google handles sign-in in your browser — no password is entered into the app.
 
 ### Postgres setup (one-time)
 
@@ -137,33 +136,19 @@ resources/org/tauasa/apps/photomosaic
 
 ## Look & feel
 
-The desktop UI shares the PWA's **"tesserae"** identity: a darkroom-ink workspace, two
-accent colours (ceramic vermilion + glass teal) used sparingly, numbered section chips, a
-gradient *Generate* button, mono numeric readouts, and a transparency-checker preview.
+The desktop UI shares the PWA's **"tesserae"** identity: a darkroom-ink workspace, two accent colours (ceramic vermilion + glass teal) used sparingly, numbered section chips, a gradient *Generate* button, mono numeric readouts, and a transparency-checker preview.
 
-It's all driven by `theme.css` (JavaFX CSS) plus two bundled open-source typefaces —
-**Archivo** for display/body and **JetBrains Mono** for data — both under the SIL Open Font
-License (see `resources/.../fonts/OFL-*.txt`). `Theme.loadFonts()` registers them at startup,
-and the CSS falls back to system fonts if a face is ever unavailable.
+It's all driven by `theme.css` (JavaFX CSS) plus two bundled open-source typefaces — **Archivo** for display/body and **JetBrains Mono** for data — both under the SIL Open Font License (see `resources/.../fonts/OFL-*.txt`). `Theme.loadFonts()` registers them at startup, and the CSS falls back to system fonts if a face is ever unavailable.
 
 ---
 
 ## How the algorithm works
 
-The target is shrunk to `columns × rows` with high-quality progressive scaling, so each
-resulting pixel approximates the average colour of one cell. For every cell we pick the nearest
-tile by a **redmean-weighted** colour distance (cheap perceptual approximation), with an
-optional penalty that discourages reusing the same tile. The chosen tile — pre-scaled once to
-the cell size — is blitted in, and an optional translucent wash of the cell's true colour
-nudges the result toward the original.
+The target is shrunk to `columns × rows` with high-quality progressive scaling, so each resulting pixel approximates the average colour of one cell. For every cell we pick the nearest tile by a **redmean-weighted** colour distance (cheap perceptual approximation), with an optional penalty that discourages reusing the same tile. The chosen tile — pre-scaled once to the cell size — is blitted in, and an optional translucent wash of the cell's true colour nudges the result toward the original.
 
 ### Memory
 
-Imported photos are downscaled to a small per-tile "master" (capped at the maximum cell
-size) the moment they're added, and the full-resolution originals are released. That keeps
-memory roughly flat with the number of tiles — a few dozen KB each — so libraries of
-hundreds or thousands of photos no longer exhaust the heap. The generator also refuses
-grid settings that would allocate an unreasonably large output image.
+Imported photos are downscaled to a small per-tile "master" (capped at the maximum cell size) the moment they're added, and the full-resolution originals are released. That keeps memory roughly flat with the number of tiles — a few dozen KB each — so libraries of hundreds or thousands of photos no longer exhaust the heap. The generator also refuses grid settings that would allocate an unreasonably large output image.
 
 ### Ideas for later
 - **Lab / CIEDE2000** matching for more faithful colour.

@@ -6,7 +6,7 @@
 
     <groupId>org.tauasa.apps</groupId>
     <artifactId>photomosaic</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <packaging>jar</packaging>
 
     <name>photomosaic</name>
@@ -16,7 +16,6 @@
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <javafx.version>21.0.4</javafx.version>
-
         <thumbnailator.version>0.4.21</thumbnailator.version>
         <twelvemonkeys.version>3.13.1</twelvemonkeys.version>
         <postgresql.version>42.7.4</postgresql.version>
