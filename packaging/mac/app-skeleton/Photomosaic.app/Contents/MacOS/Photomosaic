@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# Photomosaic.app launcher — finds a Java runtime and runs the bundled fat jar.
+# This bundle does NOT include a JRE; it uses the Java already on the system
+# (JDK/JRE 17+ recommended). For a self-contained app, use package-mac.sh instead.
+#
+set -e
+
+# Resolve the .app bundle root: this script lives in Contents/MacOS/.
+BUNDLE="$(cd "$(dirname "$0")/../.." && pwd)"
+JAR="$BUNDLE/Contents/app/photomosaic.jar"
+
+if [ ! -f "$JAR" ]; then
+  osascript -e 'display alert "Photomosaic" message "photomosaic.jar is missing from the app bundle. Re-run build-quick-app.sh."' || true
+  exit 1
+fi
+
+# Locate java: JAVA_HOME, then PATH, then macOS java_home.
+if [ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+  JAVA="$JAVA_HOME/bin/java"
+elif command -v java >/dev/null 2>&1; then
+  JAVA="$(command -v java)"
+elif [ -x /usr/libexec/java_home ]; then
+  JAVA="$(/usr/libexec/java_home 2>/dev/null)/bin/java"
+else
+  osascript -e 'display alert "Java not found" message "Photomosaic needs a Java runtime (JDK 17+). Install one from https://adoptium.net and try again."' || true
+  exit 1
+fi
+
+exec "$JAVA" ${PHOTOMOSAIC_JAVA_OPTS:-} -jar "$JAR"
