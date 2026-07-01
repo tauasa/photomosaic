@@ -1,5 +1,25 @@
 package org.tauasa.apps.photomosaic;
 
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.util.List;
+import java.util.Locale;
+
+import javax.imageio.ImageIO;
+
+import org.tauasa.apps.photomosaic.mosaic.MosaicConfig;
+import org.tauasa.apps.photomosaic.mosaic.MosaicEngine;
+import org.tauasa.apps.photomosaic.mosaic.Tile;
+import org.tauasa.apps.photomosaic.mosaic.TileLibrary;
+import org.tauasa.apps.photomosaic.provider.LocalPhotoProvider;
+import org.tauasa.apps.photomosaic.provider.PhotoProvider;
+import org.tauasa.apps.photomosaic.provider.PhotoRef;
+import org.tauasa.apps.photomosaic.provider.ProgressSink;
+import org.tauasa.apps.photomosaic.provider.db.DbConfig;
+import org.tauasa.apps.photomosaic.provider.db.PhotoStore;
+import org.tauasa.apps.photomosaic.provider.db.PostgresPhotoProvider;
+import org.tauasa.apps.photomosaic.provider.google.GooglePhotoProvider;
+
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -38,24 +58,6 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import org.tauasa.apps.photomosaic.mosaic.MosaicConfig;
-import org.tauasa.apps.photomosaic.mosaic.MosaicEngine;
-import org.tauasa.apps.photomosaic.mosaic.Tile;
-import org.tauasa.apps.photomosaic.mosaic.TileLibrary;
-import org.tauasa.apps.photomosaic.provider.LocalPhotoProvider;
-import org.tauasa.apps.photomosaic.provider.PhotoProvider;
-import org.tauasa.apps.photomosaic.provider.PhotoRef;
-import org.tauasa.apps.photomosaic.provider.ProgressSink;
-import org.tauasa.apps.photomosaic.provider.db.DbConfig;
-import org.tauasa.apps.photomosaic.provider.db.PhotoStore;
-import org.tauasa.apps.photomosaic.provider.db.PostgresPhotoProvider;
-import org.tauasa.apps.photomosaic.provider.google.GooglePhotoProvider;
-
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.util.List;
-import java.util.Locale;
 
 /**
  * Photomosaic generator. Pick a target image, gather tile images through a
@@ -199,7 +201,7 @@ public class PhotomosaicApp extends Application {
 
         Alert about = new Alert(Alert.AlertType.INFORMATION);
         about.setTitle("About Photomosaic");
-        about.setHeaderText("Photomosaic 1.0.0");
+        about.setHeaderText("Photomosaic 1.0.2");
         about.getDialogPane().setContent(content);
         Theme.apply(about.getDialogPane());
         about.showAndWait();
