@@ -18,7 +18,7 @@ runs it doesn't need Java installed.
 
 ```bash
 ./packaging/mac/package-mac.sh            # → build/mac/Photomosaic.app
-./packaging/mac/package-mac.sh --dmg      # also build a Photomosaic-1.0.0.dmg
+./packaging/mac/package-mac.sh --dmg      # also build a Photomosaic-1.0.2.dmg
 ./packaging/mac/package-mac.sh --rebuild  # force a clean mvn package first
 ```
 

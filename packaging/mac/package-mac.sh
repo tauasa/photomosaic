@@ -18,7 +18,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 APP_NAME="Photomosaic"
-APP_VERSION="1.0.0"
+APP_VERSION="1.0.2"
 VENDOR="Tauasa Timoteo"
 MAIN_JAR="photomosaic.jar"
 MAIN_CLASS="org.tauasa.apps.photomosaic.Launcher"
